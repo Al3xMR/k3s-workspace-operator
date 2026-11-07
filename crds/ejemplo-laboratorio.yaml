@@ -1,10 +1,11 @@
 apiVersion: plataforma.epn.edu.ec/v1alpha1
 kind: Laboratorio
 metadata:
-  name: lab-prueba-001
+  name: lab-iccd654-gr1cc-kevin
   namespace: lab-estudiante
 spec:
-  correoInstitucional: "kevin.martinez01@epn.edu.ec"
+  correoInstitucional: "kevin.martinez@epn.edu.ec"
   codigoMateria: "ICCD654"
   paralelo: "GR1CC"
   nivel: 2
+  tiempoInactividadMinutos: 30

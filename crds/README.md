@@ -1,30 +1,60 @@
-# Contratos de Datos (CRDs) - API de Laboratorios
+# Contratos de Datos (CRDs) - API de Kubernetes
 
-Este directorio contiene las Definiciones de Recursos Personalizados (CRDs) que extienden la API de K3s. Definen la estructura exacta que el módulo de orquestación del Backend debe enviar para aprovisionar un entorno de desarrollo.
+Este directorio contiene las Definiciones de Recursos Personalizados (CRDs) que extienden la API de K3s. Actúan como el contrato de integración entre el módulo de orquestación del Backend y el Operador de Kubernetes.
 
-## Estructura del Recurso: `Laboratorio`
+## 1. Recurso: `PlantillaCurso` (`crd-plantilla-curso.yaml`)
 
-Para crear un nuevo entorno, el Backend debe aplicar un manifiesto respetando los siguientes campos obligatorios dentro del bloque `spec`:
+Se aplica cuando un docente crea o actualiza una asignatura y su paralelo. Ordena al clúster compilar una imagen de contenedor personalizada a partir de la imagen base del nivel seleccionado.
 
-* **`correoInstitucional`** (String): Correo del alumno devuelto por la autenticación SSO (Entra ID).
-* **`codigoMateria`** (String): Código institucional de la materia (ej. `ICCD654`).
-* **`paralelo`** (String): Identificador del grupo (ej. `GR1CC` o `GR2SW`). 
-* **`nivel`** (Integer): Define el software a inyectar en el contenedor:
-  * `1`: Consola interactiva (ttyd).
-  * `2`: IDE Web (code-server).
-  * `3`: Escritorio Remoto (KasmVNC).
+### Campos de Entrada (`spec`)
+* **`codigoMateria`** (String, obligatorio): Código institucional de la asignatura (ej. `ICCD654`).
+* **`paralelo`** (String, obligatorio): Identificador del grupo (ej. `GR1CC`, `GR1SW`).
+* **`nivel`** (Integer, obligatorio): Nivel del entorno base (`1`: ttyd, `2`: code-server, `3`: KasmVNC).
+* **`herramientas`** (Array de Strings, opcional): Paquetes del sistema requeridos para la asignatura.
 
-*(Nota: La cuota de almacenamiento persistente se aplica automáticamente por el Operador de Kubernetes, asignando 500MB en el servidor NFS por cada estudiante.*
+### Campos de Salida (`status`)
+* **`fase`**: Estado de la construcción (`Pending`, `Building`, `Ready`, `Failed`).
+* **`imagenTag`**: Identificador de la imagen resultante en el registro interno del clúster.
 
-## Valores de Retorno (Bloque `status`)
+## 2. Recurso: `Laboratorio` (`crd-laboratorio.yaml`)
 
-Una vez que el Operador de Kubernetes inicie el aprovisionamiento, actualizará el recurso con estos campos de solo lectura para que el Backend los consuma:
+Se aplica cuando un estudiante solicita iniciar su entorno virtual desde el Dashboard. Instancia un Pod utilizando la imagen precompilada del curso, enlaza el almacenamiento NFS y aplica las políticas de recursos.
 
-* **`fase`**: Estado actual (ej. `Pending`, `Running`, `Hibernating`, `Terminating`).
-* **`urlAcceso`**: URL segura (HTTPS/WSS) generada por el Ingress para incrustar el entorno en el iframe del Workspace.
+### Campos de Entrada (`spec`)
+* **`correoInstitucional`** (String, obligatorio): Correo del estudiante validado mediante SSO.
+* **`codigoMateria`** (String, obligatorio): Código de la asignatura (ej. `ICCD654`).
+* **`paralelo`** (String, obligatorio): Grupo matriculado (ej. `GR1CC`).
+* **`nivel`** (Integer, obligatorio): Nivel del entorno (`1`, `2` o `3`).
+* **`tiempoInactividadMinutos`** (Integer, opcional): Tiempo máximo sin tráfico de red antes de hibernar el Pod (por defecto `30`).
 
-## Aplicación Manual
+### Políticas Aplicadas Automáticamente por Infraestructura
+* **Almacenamiento Persistente:** Se asigna y monta mediante `subPath` un PVC con cuota estricta de `500Mi` en el servidor NFS por estudiante.
+* **Límites de Hardware (`LimitRanges`):** La memoria RAM (`512Mi` para nivel 1, `1Gi` para nivel 2, `2Gi` para nivel 3) y las ráfagas de CPU se asignan automáticamente en función del campo `nivel`.
+
+### Campos de Salida (`status`)
+* **`fase`**: Estado del entorno (`Pending`, `Provisioning`, `Running`, `Hibernating`, `Terminating`, `Failed`).
+* **`urlAcceso`**: Ruta HTTPS/WSS expuesta por el Ingress Controller para incrustar en el iframe del Workspace.
+* **`ultimaActividad`**: Marca de tiempo de la última actividad de red registrada.
+
+## Comandos de Despliegue y Prueba
+
+Registrar los CRDs en el clúster:
+```bash
+kubectl apply -f crds/crd-plantilla-curso.yaml
+kubectl apply -f crds/crd-laboratorio.yaml
+```
+
+Crear el namespace aislado y aplicar los manifiestos de prueba:
 
 ```bash
-kubectl apply -f crd-laboratorio.yaml
+kubectl create namespace lab-estudiante
+kubectl apply -f crds/ejemplo-plantilla-curso.yaml
+kubectl apply -f crds/ejemplo-laboratorio.yaml
+```
+
+Consultar el estado de los recursos:
+
+```bash
+kubectl get pcurso -n lab-estudiante
+kubectl get lab -n lab-estudiante
 ```

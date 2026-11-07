@@ -1,0 +1,13 @@
+apiVersion: plataforma.epn.edu.ec/v1alpha1
+kind: PlantillaCurso
+metadata:
+  name: plantilla-iccd654-gr1cc
+  namespace: lab-estudiante
+spec:
+  codigoMateria: "ICCD654"
+  paralelo: "GR1CC"
+  nivel: 2
+  herramientas:
+    - "build-essential"
+    - "openmpi-bin"
+    - "python3"

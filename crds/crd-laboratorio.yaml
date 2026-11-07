@@ -8,38 +8,41 @@ spec:
     - name: v1alpha1
       served: true
       storage: true
+      subresources:
+        status: {}
       schema:
         openAPIV3Schema:
           type: object
-          description: "Esquema base para el aprovisionamiento de entornos de desarrollo"
           properties:
             spec:
               type: object
               properties:
                 correoInstitucional:
                   type: string
-                  description: "Correo institucional del estudiante provisto por el SSO"
                 codigoMateria:
                   type: string
-                  description: "Código unificado de la asignatura (ej. ICCD654)"
                 paralelo:
                   type: string
-                  description: "Código del grupo/paralelo (ej. GR1CC, GR1SW)"
                 nivel:
                   type: integer
                   minimum: 1
                   maximum: 3
-                  description: "Nivel del laboratorio: 1 (ttyd), 2 (code-server), 3 (KasmVNC)"
+                tiempoInactividadMinutos:
+                  type: integer
+                  default: 30
+                  minimum: 5
               required: ["correoInstitucional", "codigoMateria", "paralelo", "nivel"]
             status:
               type: object
               properties:
                 fase:
                   type: string
-                  description: "Estado del ciclo de vida: Pending, Provisioning, Running, Hibernating, Terminating"
+                  enum: ["Pending", "Provisioning", "Running", "Hibernating", "Terminating", "Failed"]
                 urlAcceso:
                   type: string
-                  description: "URL HTTPS/WSS generada por el Ingress para el iframe"
+                ultimaActividad:
+                  type: string
+                  format: date-time
       additionalPrinterColumns:
         - name: Estudiante
           type: string
