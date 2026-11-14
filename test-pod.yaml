@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-codeserver
+  namespace: lab-estudiante
+spec:
+  containers:
+  - name: workspace
+    image: localhost/registro-local/base-nivel2-codeserver:latest
+    imagePullPolicy: Never
+    ports:
+    - containerPort: 8080
